@@ -16,7 +16,7 @@ st.write(st.session_state['greeting'])	# Hello, there!
 
 # st.sidebar.success("Select a page above")
 col1, col2, col3, col4 = st.columns(4)
-col1.header("K/PPIdx")
+col1.title("K/PP Idx")
 
 pd.options.display.float_format = '{:.3f}'.format
 
