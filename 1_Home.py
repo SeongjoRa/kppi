@@ -11,14 +11,28 @@ st.set_page_config(
 )
 
 if 'greeting' not in st.session_state:
-    st.session_state['greeting'] = 'Hello, there!'
-st.write(st.session_state['greeting'])	# Hello, there!
+    st.session_state['greeting'] = "Hello, there!"
+st.write(st.session_state['greeting'])
 
-# st.sidebar.success("Select a page above")
-col1, col2, col3, col4 = st.columns(4)
-col1.title("K/PP Idx")
+# pd.options.display.float_format = '{:.3f}'.format
 
-pd.options.display.float_format = '{:.3f}'.format
+def prices(url, payload):
+    return requests.get(url, params=payload, verify= False)
+try:
+    fixer_url = "https://api.apilayer.com/fixer/latest"
+    fixer_payload = {"apikey":"YUSsztE6yPPsmvM5N7soeY2g0NucdN18", "symbols":"KRW", "base":"PHP"}
+    res_fixer = prices(fixer_url, fixer_payload)
+    phpkrw = res_fixer.json()["rates"]["KRW"]
+except:
+    pass
+finally:
+    url2 = "https://www.google.com/finance/quote/PHP-KRW?sa=X&ved=2ahUKEwjdo7-ajMX-AhUFbt4KHSOzAYcQmY0JegQIARAZ"
+    response = requests.get(url2, verify= False)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "lxml")
+    phpkrw = float(soup.find("div", attrs={"class":"YMlKec fxKbKc"}).get_text().strip())
+
+st.sidebar.metric(label= "Exchange Rate", value= phpkrw)
 
 url = "https://api.pro.coins.ph//openapi/quote/v1/ticker/price" # All Coins available in Coins Pro
 try:
@@ -54,22 +68,6 @@ for coin in krw_temp:
 df = df[df["Coins Pro"].isin(krw_temp2)]
 df.reset_index(drop= True, inplace= True)
 
-def prices(url, payload):
-    return requests.get(url, params=payload, verify= False)
-try:
-    fixer_url = "https://api.apilayer.com/fixer/latest"
-    fixer_payload = {"apikey":"YUSsztE6yPPsmvM5N7soeY2g0NucdN18", "symbols":"KRW", "base":"PHP"}
-    res_fixer = prices(fixer_url, fixer_payload)
-    phpkrw = res_fixer.json()["rates"]["KRW"]
-except:
-    pass
-finally:
-    url2 = "https://www.google.com/finance/quote/PHP-KRW?sa=X&ved=2ahUKEwjdo7-ajMX-AhUFbt4KHSOzAYcQmY0JegQIARAZ"
-    response = requests.get(url2, verify= False)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, "lxml")
-    phpkrw = float(soup.find("div", attrs={"class":"YMlKec fxKbKc"}).get_text().strip())
-
 df["*Converted KRW"] = df["PHP"] * phpkrw
 php_coins = list(df["Coins Pro"])
         
@@ -95,17 +93,28 @@ df2["K/PPI"] = df2["*Converted KRW"]/df2["KRW"]
 st.session_state['df2'] = df2
 
 df3 = df2[["Coins Pro", "*Converted KRW", "UPbit", "KRW", "K/PPI"]]
-max_i = round((df3["K/PPI"].max() - 1) * 100, 3) 
-min_i = round((df3["K/PPI"].min() - 1) * 100, 3)
+maxx = df3["K/PPI"].nlargest(2).index
+max1 = round((df3.iloc[maxx[0],4] - 1 ) * 100, 4) 
+max2 = round((df3.iloc[maxx[1],4] - 1 ) * 100, 4)
 
-max_only = df3.iloc[df2.idxmax(axis=0, skipna=True, numeric_only=True)["K/PPI"]]
-min_only = df3.iloc[df2.idxmin(axis=0, skipna=True, numeric_only=True)["K/PPI"]]
+minn = df3["K/PPI"].nsmallest(2).index
+min1 = round((df3.iloc[minn[0],4] - 1 ) * 100, 4)
+min2 = round((df3.iloc[minn[1],4] - 1 ) * 100, 4)
 
-col2.metric(label= "MAX K/PPI", value= max_only[0][:-3], delta= f"{max_i}%")
-col3.metric(label= "MIN K/PPI", value= min_only[0][:-3], delta= f"{min_i}%")
-col4.metric(label= "Exchange Rate", value= phpkrw)
+max1_only = df3.iloc[maxx[0]]
+max2_only = df3.iloc[maxx[1]]
+min1_only = df3.iloc[minn[0]]
+min2_only = df3.iloc[minn[1]]
 
-# st.divider()
-col11, col22 = st.columns(2)
-col11.json(max_only.to_json())
-col22.json(min_only.to_json())
+col1, col2, col3, col4 = st.columns(4)
+col1.metric(label= "MAX K/PPIs", value= max1_only[0][:-3], delta= f"{max1}%")
+col2.metric(label= "MAX K/PPIs", value= max2_only[0][:-3], delta= f"{max2}%")
+col3.metric(label= "MIN K/PPIs", value= min1_only[0][:-3], delta= f"{min1}%")
+col4.metric(label= "MIN K/PPIs", value= min2_only[0][:-3], delta= f"{min2}%")
+
+st.divider()
+col11, col22, col33, col44 = st.columns(4)
+col11.json(max1_only.to_json())
+col22.json(max2_only.to_json())
+col33.json(min1_only.to_json())
+col44.json(min2_only.to_json())
